@@ -14,10 +14,7 @@ class Paths():
 
         self.extracted = os.path.join(self.root, 'extracted')
         self.air_extracted = os.path.join(self.extracted, 'AIR-Act2Act')
-        self.air_train_data = os.path.join(self.air_extracted, 'train data')
-        self.air_test_data = os.path.join(self.air_extracted, 'valid data')
         self.ntu_extracted = os.path.join(self.extracted, 'NTU')
-        self.ntu_test_data = self.ntu_extracted
 
         # model
         self.model = os.path.join(self.root, 'models')
@@ -39,7 +36,7 @@ class HParams():
         self.hold_last = 5
 
         # training
-        self.epochs = 500
+        self.epochs = 300
         self.save_epochs = 10
         self.batch_size = 100
         self.learning_rate = 0.00001

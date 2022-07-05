@@ -11,8 +11,7 @@ from utils.draw import Artist
 from config import path, hp
 
 # path
-train_path = path.air_train_data
-test_path = path.air_test_data
+train_path = path.air_extracted
 
 # parameters
 seq_length = 15
@@ -69,12 +68,11 @@ def gen_sequence(data, length):
 
 
 class KMeansClustering:
-    def __init__(self, actions, n_clusters, seq_length, norm_method, train_paths):
+    def __init__(self, actions, n_clusters, seq_length, norm_method):
         self.actions = actions
         self.n_clusters = n_clusters
         self.seq_length = seq_length
         self.norm_method = norm_method
-        self.train_paths = train_paths
 
         model_file = os.path.join(path.kmeans_model, f"{''.join(self.actions)}_full_{self.n_clusters}_cluster.pkl")
         if not os.path.exists(model_file):
@@ -139,10 +137,9 @@ class KMeansClustering:
         train = self.make_null_dataframe(self.seq_length)
         for action in actions:
             print(F"\nAction: {action}")
-            for train_path in self.train_paths:
-                files = glob.glob(os.path.join(train_path, f"*{action}*.npz"))
-                train = train.append(self.preprocessing(self.seq_length, files), ignore_index=True, sort=False)
-                print(f'Data loaded. Total {len(files)} files.')
+            files = glob.glob(os.path.join(train_path, f"*{action}*.npz"))
+            train = train.append(self.preprocessing(self.seq_length, files), ignore_index=True, sort=False)
+            print(f'Data loaded. Total {len(files)} files.')
         print(f'Total data size: {train.size}')
 
         # K-means clustering
@@ -159,8 +156,7 @@ class KMeansClustering:
 
 
 def load_model(actions, n_clusters, seq_length, norm_method):
-    kmeans = KMeansClustering(actions=actions, n_clusters=n_clusters, seq_length=seq_length, norm_method=norm_method,
-                              train_paths=[train_path, test_path])
+    kmeans = KMeansClustering(actions=actions, n_clusters=n_clusters, seq_length=seq_length, norm_method=norm_method)
     return kmeans
 
 
@@ -245,8 +241,6 @@ def test_all():
     data_files = list()
     for action in actions:
         data_files.extend(glob.glob(os.path.join(train_path, F"*{action}*.npz")))
-    for action in actions:
-        data_files.extend(glob.glob(os.path.join(test_path, F"*{action}*.npz")))
     data_files.sort()
     n_data = len(data_files)
     print('There are %d data.' % n_data)
