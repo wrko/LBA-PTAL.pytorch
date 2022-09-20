@@ -120,72 +120,14 @@ def split_files(files, ratio, devide):
     return train_files, test_files
 
 
-def label():
-    kcluster_module = __import__('utils.kcluster', fromlist=['BodyGameRuntime'], level=0)
-
-    # get all data files
-    data_files = list()
-    for action in hp.actions:
-        data_files.extend(glob.glob(os.path.join(DATA_PATH, F"*{action}*.npz")))
-    data_files.sort()
-
-    # label action classes
-    pbar = tqdm(total=len(data_files))
-    for data_file in data_files:
-        with np.load(data_file, allow_pickle=True) as data:
-            # action class mapping
-            action = os.path.basename(data_file)[4:8]
-            kmeans, sub_action_mapping = kcluster_module.load_proper_model(action)
-            km_model = kmeans.km_model
-
-            # extract inputs from data file
-            human_data = [norm_features(human, method=hp.input_norm_method) for human in data['human_info']]
-            third_data = data['third_info']
-
-            step = hp.step
-            sampled_human_data = human_data[::step]
-            sampled_third_data = third_data[::step]
-
-            # label "None"
-            sampled_labels = list()
-            for f in range(hp.user_pose_length - 1):
-                sampled_labels.append("None")
-
-            # label recognized action class by k-means clustering
-            for human_seq, third_seq in zip(kcluster_module.gen_sequence(sampled_human_data, hp.user_pose_length),
-                                            kcluster_module.gen_sequence(sampled_third_data, hp.user_pose_length)):
-                seq = np.concatenate((third_seq, human_seq), axis=1)
-                df = kmeans.make_dataframe([seq], hp.user_pose_length)
-                sub_action = km_model.predict(df)
-                action_name = kcluster_module.subaction_names[sub_action_mapping[sub_action[0]]]
-                sampled_labels.append(action_name)
-
-            # add to data
-            labels = list()
-            for f in range(len(human_data)):
-                labels.append(sampled_labels[int(f / step)])
-
-            np.savez(data_file,
-                     human_info=data['human_info'],
-                     third_info=data['third_info'],
-                     human_action=labels)
-
-        pbar.update(1)
-    pbar.close()
-
-
 if __name__ == "__main__":
     # generate data files
     print('Extracting data...')
     gen_datafiles()
 
-    # label sub-action classes
-    print('Labeling sub-action classes for each data...')
-    label()
-
-    # split data into train, retrain and test sets
-    print('Splitting data into train, re-train, test sets...')
-    files = glob.glob(os.path.join(DATA_PATH, "*.npz"))
-    train_files, rest_files = split_files(files, 49 / 50, 'subject')
-    retrain_files, test_files = split_files(rest_files, 1 / 2, 'random')
-    print(len(train_files), len(retrain_files), len(test_files))
+    # # split data into train, retrain and test sets
+    # print('Splitting data into train, re-train, test sets...')
+    # files = glob.glob(os.path.join(DATA_PATH, "*.npz"))
+    # train_files, rest_files = split_files(files, 49 / 50, 'subject')
+    # retrain_files, test_files = split_files(rest_files, 1 / 2, 'random')
+    # print(len(train_files), len(retrain_files), len(test_files))

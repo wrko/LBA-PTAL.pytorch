@@ -4,6 +4,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
 from blitz.modules import BayesianLSTM
 from blitz.utils import variational_estimator
@@ -50,7 +51,8 @@ class PHAR():
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.time = time.time()
 
-    def train(self, epoch, train_data_loader, test_data_loader):
+
+    def train(self, epoch, train_data_loader, test_data_loader, b_print=True):
         os.makedirs(path.lstm_model, exist_ok=True)
         file = open(os.path.join(path.lstm_model, f"{self.time}.log"), "a")
         # train:
@@ -70,24 +72,24 @@ class PHAR():
         line = f'epoch\t{epoch}\ttrain_loss\t{train_loss:0.4f}\ttest_acc\t{test_acc:0.4f}'
         file.write(line + '\n')
         if epoch % hp.save_epochs == 0:
-            print(line)
+            if b_print:
+                print(line)
             self.save(epoch)
         file.close()
 
-    def step(self, inps, outs, b_train=False, n_samples=100):
+    def step(self, inps, outs, b_train=False, n_samples=100, b_individual=False):
         # make input and output as tensor
-        b_numpy = type(inps) is (np.ndarray or list)
+        b_numpy = type(inps) in [np.ndarray, list]
         if b_numpy:
             inps = torch.FloatTensor(inps)
             outs = torch.FloatTensor(outs)
-        # dropout for training mode
-        self.model.train(b_train)
         # prepare data
         if hp.use_cuda:
             inps = inps.cuda()
             outs = outs.cuda()
         # back-propagation
         if b_train:
+            self.model.train()
             loss = self.model.sample_elbo(inputs=inps, labels=outs, criterion=self.loss_fn,
                                           sample_nbr=3, complexity_cost_weight=1/50000)
             loss.backward()
@@ -95,17 +97,26 @@ class PHAR():
             return loss
         # evaluate
         else:
-            preds = [torch.argmax(self.model(inps), dim=1) for _ in range(n_samples)]
-            preds = torch.stack(preds)
-            correct = preds == outs
-            acc = 100 * (float(correct.sum()) / outs.size(0) / n_samples)
-            stds = correct.float().std(dim=1)
-            pred = preds[0]
-            if b_numpy:
-                if hp.use_cuda:
-                    pred = pred.cpu()
-                pred = pred.detach().numpy()
-            return pred, acc, stds.mean(dim=0)
+            self.model.eval()
+            with torch.no_grad():
+                # accuracy
+                preds = [torch.argmax(self.model(inps), dim=1) for _ in range(n_samples)]
+                preds = torch.stack(preds)
+                correct = preds == outs
+                accs = 100 * (correct.type(torch.float32).sum(dim=0) / n_samples)
+                # uncertainty
+                stds = F.one_hot(preds, num_classes=len(subaction_names)).type(torch.float32).std(dim=0).mean(dim=1)
+                # prediction
+                pred = preds[0]
+                if b_numpy:
+                    if hp.use_cuda:
+                        pred = pred.cpu()
+                    pred = pred.detach().numpy()
+                # return values
+                if b_individual:
+                    return pred, accs, stds
+                else:
+                    return pred, accs.mean(), stds.mean()
 
     def save(self, epoch):
         torch.save(self.model.state_dict(), os.path.join(path.lstm_model, 'LSTMModel_epoch_%d.pth' % epoch))
@@ -115,9 +126,10 @@ class PHAR():
         saved_model = torch.load(os.path.join(path.lstm_model, 'LSTMModel_epoch_%d.pth' % epoch), map_location=device)
         self.model.load_state_dict(saved_model)
 
-    def test(self, epoch, data_loader):
+    def test(self, data_loader, epoch=-1):
         # load trained model
-        self.load(epoch)
+        if epoch != -1:
+            self.load(epoch)
 
         # calculate uncertainty
         acc_mean = 0.

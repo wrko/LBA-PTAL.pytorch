@@ -8,12 +8,13 @@ import glob
 from utils.AIR import move_camera_to_front, vectorize
 from config import path
 
-save_npy_path = path.ntu_test_data
+save_npy_path = path.ntu_extracted
 os.makedirs(save_npy_path, exist_ok=True)
 load_txt_path = r'D:\HRI DB\NTU Action Recognition\Skeletons\whole'
 step_ranges = list(range(0, 100))  # just parse range, for the purpose of paralle running.
-
 toolbar_width = 50
+
+n_hold_frames = 60
 
 
 def print_toolbar(rate, annotation=''):
@@ -89,7 +90,6 @@ def save_skeleton(load_file_path, save_file_path):
     extracted_human_info = list()
     extracted_robot_info = list()
     extracted_third_info = list()
-    human_action_info = list()
 
     MAX_DISTANCE = 5.
     n_frames = min(len(human_info), len(robot_info))
@@ -102,21 +102,24 @@ def save_skeleton(load_file_path, save_file_path):
     move_camera_to_front(human_info, body_id=0)
     move_camera_to_front(robot_info, body_id=0)
 
+    for f in range(n_hold_frames):
+        extracted_human_info.append(human_info[0][0]["joints"])
+        extracted_robot_info.append(robot_info[0][0]["joints"])
+        extracted_third_info.insert(0, extracted_third_info[0])
+
     for f in range(n_frames):
         extracted_human_info.append(human_info[f][0]["joints"])
         extracted_robot_info.append(robot_info[f][0]["joints"])
-        human_action_info.append("stand")
 
     np.savez(save_file_path,
              human_info=extracted_human_info,
              robot_info=extracted_robot_info,
-             third_info=extracted_third_info,
-             human_action=human_action_info)
+             third_info=extracted_third_info)
 
     print(os.path.basename(load_file_path))
 
 
-if __name__ == '__main__':
+def gen_datafiles():
     datalist = list()
     for action in ['C001*R001*A058', 'C001*R001*A055', 'C001*R001*A051']:
         datalist.extend(map(os.path.basename, glob.glob(os.path.join(load_txt_path, f"*{action}*.skeleton"))))
@@ -126,7 +129,7 @@ if __name__ == '__main__':
         loadname = os.path.join(load_txt_path, each)
         savename = os.path.join(save_npy_path, os.path.splitext(each)[0])
         if os.path.exists(savename):
-            print('file already existed !')
+            # print('file already existed !')
             continue
         S = int(each[1:4])
         if S not in step_ranges:
@@ -134,3 +137,9 @@ if __name__ == '__main__':
         save_skeleton(loadname, savename)
         # raise ValueError()
     end_toolbar()
+
+
+if __name__ == '__main__':
+    # generate data files
+    print('Extracting data...')
+    gen_datafiles()

@@ -18,5 +18,8 @@ $ pip install scikit-learn==0.22.1
 
 1. Run ```python extractAIR.py```.
 1. Run ```python extractNTU.py```.
+1. Run ```python label.py```
 1. Run ```python train.py```.
 1. Run ```python test.py```
+1. Run ```python retrain_by_file.py```
+1. Run ```python retrain_by_data.py```

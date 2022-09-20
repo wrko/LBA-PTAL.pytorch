@@ -2,6 +2,6 @@
 *
 # Except this file
 !.gitignore
-!LSTMModel_epoch_150.pth
+!LSTMModel_epoch_290.pth
 !files_for_test.csv
 !files_for_train.csv

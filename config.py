@@ -38,7 +38,7 @@ class HParams():
         # training
         self.epochs = 300
         self.save_epochs = 10
-        self.batch_size = 100
+        self.batch_size = 50
         self.learning_rate = 0.00001
         self.step = 3
         self.b_use_noise = True
@@ -46,7 +46,7 @@ class HParams():
         # robot test
         self.v_width = 640
         self.v_height = 480
-        # self.actions = ['A005']
-        self.actions = ['A001', 'A004', 'A005', 'A006', 'A008']
+        self.actions = ['A005']
+        # self.actions = ['A001', 'A004', 'A005', 'A006', 'A008']
 
 hp = HParams()

@@ -54,7 +54,13 @@ class HARDataSet(dt.Dataset):
                 continue
             for human_past_data, human_action in self.extract_data(
                     self.human_data[idx], self.human_actions[idx], self.third_data[idx], hp.user_pose_length):
+                if human_action == 'None':
+                    continue
                 self.inps.append(human_past_data)
+                # if human_action not in subaction_names:
+                #     cur_action = 0
+                # else:
+                #     cur_action = subaction_names.index(human_action)
                 cur_action = subaction_names.index(human_action)
                 self.outs.append(cur_action)
             for f in range(hp.hold_last):
